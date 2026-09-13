@@ -1,0 +1,17 @@
+[
+  { "code": "MTN1GB",  "network": "MTN",     "category": "MTN",        "label": "1GB",  "validity": "30 days", "price": 5.50 },
+  { "code": "MTN2GB",  "network": "MTN",     "category": "MTN",        "label": "2GB",  "validity": "30 days", "price": 10.50 },
+  { "code": "MTN5GB",  "network": "MTN",     "category": "MTN",        "label": "5GB",  "validity": "30 days", "price": 24.00 },
+  { "code": "MTN10GB", "network": "MTN",     "category": "MTN",        "label": "10GB", "validity": "30 days", "price": 45.00 },
+
+  { "code": "ATIS1GB", "network": "AT",      "category": "AT iShare",  "label": "1GB",  "validity": "30 days", "price": 5.00 },
+  { "code": "ATIS2GB", "network": "AT",      "category": "AT iShare",  "label": "2GB",  "validity": "30 days", "price": 9.50 },
+  { "code": "ATIS5GB", "network": "AT",      "category": "AT iShare",  "label": "5GB",  "validity": "30 days", "price": 22.00 },
+
+  { "code": "ATBT10GB","network": "AT",      "category": "AT BigTime", "label": "10GB", "validity": "30 days", "price": 40.00 },
+  { "code": "ATBT20GB","network": "AT",      "category": "AT BigTime", "label": "20GB", "validity": "30 days", "price": 70.00 },
+
+  { "code": "TEL1GB",  "network": "Telecel", "category": "Telecel",    "label": "1GB",  "validity": "30 days", "price": 5.00 },
+  { "code": "TEL2GB",  "network": "Telecel", "category": "Telecel",    "label": "2GB",  "validity": "30 days", "price": 9.50 },
+  { "code": "TEL5GB",  "network": "Telecel", "category": "Telecel",    "label": "5GB",  "validity": "30 days", "price": 21.00 }
+]

@@ -1,0 +1,20 @@
+{
+  "STU0001": {
+    "name": "Sample Student",
+    "semester": "Mid-Semester 2026",
+    "courses": [
+      { "code": "CSM 201", "name": "Data Structures", "score": 78, "grade": "A", "credits": 3 },
+      { "code": "MTH 205", "name": "Linear Algebra II", "score": 65, "grade": "B", "credits": 3 },
+      { "code": "ENG 110", "name": "Technical Writing", "score": 71, "grade": "A-", "credits": 2 },
+      { "code": "PHY 202", "name": "Electromagnetism", "score": 58, "grade": "B-", "credits": 3 }
+    ]
+  },
+  "STU0002": {
+    "name": "Sample Student Two",
+    "semester": "Mid-Semester 2026",
+    "courses": [
+      { "code": "CSM 201", "name": "Data Structures", "score": 88, "grade": "A+", "credits": 3 },
+      { "code": "MTH 205", "name": "Linear Algebra II", "score": 74, "grade": "A-", "credits": 3 }
+    ]
+  }
+}
