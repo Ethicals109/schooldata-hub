@@ -41,7 +41,7 @@ const sms = require("./lib/sms");
 const oauth = require("./lib/oauth");
 const paystack = require("./lib/paystack");
 const studentIds = require("./lib/studentIds");
-const { layout } = require("./lib/layout");
+const { layout, adminLayout } = require("./lib/layout");
 const pages = require("./lib/pages");
 
 const PORT = process.env.PORT || 3000;
@@ -724,6 +724,12 @@ async function handleAdminLoginPost(req, res) {
   sendHtml(res, 401, layout({ title: "Admin login", body: pages.adminLoginPage({ error: "Incorrect admin credentials." }) }));
 }
 
+async function handleAdminLogout(req, res) {
+  const cookies = auth.parseCookies(req);
+  if (cookies.adminSession) auth.destroyAdminSession(cookies.adminSession);
+  redirect(res, "/admin/login", "adminSession=; HttpOnly; Path=/; Max-Age=0");
+}
+
 async function handleAdminHomeGet(req, res) {
   if (!(await currentAdmin(req))) return redirect(res, "/admin/login");
 
@@ -745,13 +751,13 @@ async function handleAdminHomeGet(req, res) {
   // real balance check call.
   const walletBalance = null;
 
-  sendHtml(res, 200, layout({ title: "Admin", body: pages.adminHomePage({ stats, walletBalance }) }));
+  sendHtml(res, 200, adminLayout({ title: "Admin", active: "overview", body: pages.adminHomePage({ stats, walletBalance }) }));
 }
 
 async function handleAdminOrdersGet(req, res) {
   if (!await currentAdmin(req)) return redirect(res, "/admin/login");
   const orders = (await db.read("orders")).reverse();
-  sendHtml(res, 200, layout({ title: "Admin · Orders", body: pages.adminOrdersPage({ orders }) }));
+  sendHtml(res, 200, adminLayout({ title: "Admin · Orders", active: "orders", body: pages.adminOrdersPage({ orders }) }));
 }
 
 // -------- admin: pre-issued Student IDs --------
@@ -760,8 +766,9 @@ async function handleAdminStudentIdsGet(req, res, url) {
   if (!await currentAdmin(req)) return redirect(res, "/admin/login");
   const list = await studentIds.read();
   const query = url.searchParams.get("q") || "";
-  const html = layout({
+  const html = adminLayout({
     title: "Admin · Student IDs",
+    active: "student-ids",
     body: pages.studentIdsPage({
       counts: studentIds.counts(list),
       recent: studentIds.recentlyIssued(list),
@@ -783,8 +790,9 @@ async function handleAdminStudentIdsIssuePost(req, res) {
     return sendHtml(
       res,
       400,
-      layout({
+      adminLayout({
         title: "Admin · Student IDs",
+        active: "student-ids",
         body: pages.studentIdsPage({ counts: studentIds.counts(list), recent: studentIds.recentlyIssued(list), query: "", results: [] }),
         flash: { type: "error", message: "A student name is required to issue an ID." },
       })
@@ -799,8 +807,9 @@ async function handleAdminStudentIdsIssuePost(req, res) {
     return sendHtml(
       res,
       400,
-      layout({
+      adminLayout({
         title: "Admin · Student IDs",
+        active: "student-ids",
         body: pages.studentIdsPage({ counts: studentIds.counts(list), recent: studentIds.recentlyIssued(list), query: "", results: [] }),
         flash: { type: "error", message: err.message },
       })
@@ -815,8 +824,9 @@ async function handleAdminStudentIdsIssuePost(req, res) {
   sendHtml(
     res,
     200,
-    layout({
+    adminLayout({
       title: "Admin · Student IDs",
+      active: "student-ids",
       body: pages.studentIdsPage({
         counts: studentIds.counts(list),
         recent: studentIds.recentlyIssued(list),
@@ -922,6 +932,7 @@ const server = http.createServer(async (req, res) => {
     if (method === "GET" && pathname === "/admin/login") return handleAdminLoginGet(req, res);
     if (method === "POST" && pathname === "/admin/login") return handleAdminLoginPost(req, res);
     if (method === "GET" && pathname === "/admin") return handleAdminHomeGet(req, res);
+    if (method === "GET" && pathname === "/admin/logout") return handleAdminLogout(req, res);
     if (method === "GET" && pathname === "/admin/orders") return handleAdminOrdersGet(req, res);
     if (method === "GET" && pathname === "/admin/student-ids") return handleAdminStudentIdsGet(req, res, url);
     if (method === "POST" && pathname === "/admin/student-ids/issue") return handleAdminStudentIdsIssuePost(req, res);
