@@ -719,9 +719,33 @@ async function handleAdminLoginPost(req, res) {
   const adminConf = await db.read("admin");
   if (body.username === adminConf.username && body.password === adminConf.password) {
     const token = auth.createAdminSession();
-    return redirect(res, "/admin/orders", adminSessionCookie(token));
+    return redirect(res, "/admin", adminSessionCookie(token));
   }
   sendHtml(res, 401, layout({ title: "Admin login", body: pages.adminLoginPage({ error: "Incorrect admin credentials." }) }));
+}
+
+async function handleAdminHomeGet(req, res) {
+  if (!(await currentAdmin(req))) return redirect(res, "/admin/login");
+
+  const orders = await db.read("orders");
+  const idsList = await studentIds.read();
+  const idCounts = studentIds.counts(idsList);
+
+  const stats = {
+    totalOrders: orders.length,
+    pendingOrders: orders.filter((o) => ["paid", "pending"].includes(o.status)).length,
+    paidOrders: orders.filter((o) => o.status === "paid").length,
+    completedOrders: orders.filter((o) => o.status === "completed").length,
+    unassignedIds: idCounts.unassigned,
+    claimedIds: idCounts.claimed,
+  };
+
+  // GigForLess isn't wired in yet (API key pending approval) — walletBalance
+  // stays null until lib/gigforless.js exists and this is replaced with a
+  // real balance check call.
+  const walletBalance = null;
+
+  sendHtml(res, 200, layout({ title: "Admin", body: pages.adminHomePage({ stats, walletBalance }) }));
 }
 
 async function handleAdminOrdersGet(req, res) {
@@ -897,6 +921,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === "GET" && pathname === "/admin/login") return handleAdminLoginGet(req, res);
     if (method === "POST" && pathname === "/admin/login") return handleAdminLoginPost(req, res);
+    if (method === "GET" && pathname === "/admin") return handleAdminHomeGet(req, res);
     if (method === "GET" && pathname === "/admin/orders") return handleAdminOrdersGet(req, res);
     if (method === "GET" && pathname === "/admin/student-ids") return handleAdminStudentIdsGet(req, res, url);
     if (method === "POST" && pathname === "/admin/student-ids/issue") return handleAdminStudentIdsIssuePost(req, res);

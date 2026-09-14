@@ -272,6 +272,47 @@ a { color: var(--night-2); }
 .status-payment_failed { background: #F6DEDA; color: var(--danger); }
 .status-completed { background: #DCEEE9; color: var(--teal); }
 
+/* Admin dashboard home */
+.admin-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--night);
+  color: var(--paper);
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  margin: 1.2rem 0 1.6rem;
+}
+.admin-balance .label { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; margin: 0 0 0.2rem; }
+.admin-balance .amount { font-size: 1.6rem; font-weight: 700; margin: 0; }
+.admin-balance .amount.muted { opacity: 0.55; font-size: 1.1rem; font-weight: 500; }
+
+.quick-access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.9rem;
+  margin: 1.2rem 0 1.8rem;
+}
+.quick-access-card {
+  display: block;
+  padding: 1rem;
+  border-radius: 10px;
+  color: #fff;
+  text-decoration: none;
+  min-height: 84px;
+}
+.quick-access-card .qa-title { display: block; font-weight: 700; margin-top: 0.6rem; font-size: 0.95rem; }
+.quick-access-card .qa-sub { display: block; font-size: 0.78rem; opacity: 0.85; margin-top: 0.15rem; }
+.quick-access-card.disabled { opacity: 0.55; cursor: default; }
+.qa-icon { font-size: 1.3rem; }
+
+.qa-orders { background: linear-gradient(135deg, #2F7A6B, #235c50); }
+.qa-student-ids { background: linear-gradient(135deg, #C9821F, #a3690f); }
+.qa-bundles { background: linear-gradient(135deg, #1B5FA8, #134579); }
+.qa-gigforless { background: linear-gradient(135deg, #7B4FA6, #5c3a7d); }
+.qa-paystack { background: linear-gradient(135deg, #0EA57D, #0b7d5f); }
+.qa-settings { background: linear-gradient(135deg, #4A5568, #333c48); }
+
 .gpa-result { margin-top: 2rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
 .gpa-total { font-size: 1.1rem; }
 
