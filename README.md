@@ -173,6 +173,52 @@ then can that person use it to register.
   admin page shows live counts of each, plus a search box (by code,
   name, or phone) to look up who a code was issued to.
 
+## Making data persistent for free
+
+Free hosts like Render wipe the local filesystem on every restart, redeploy,
+or sleep/wake cycle — which means `data/students.json`, `orders.json`, and
+`student_ids.json` would periodically reset to empty. **Upstash Redis**
+fixes this: it has a real always-free tier (no card required, no expiry),
+and `lib/db.js` already knows how to use it — you just need to create one
+and point the app at it.
+
+### 1. Create a free Upstash Redis database
+
+1. Sign up at [upstash.com](https://upstash.com) (GitHub login works).
+2. **Create Database** → any name → pick a region close to wherever you're
+   hosting (e.g. same region as your Render service, or the closest one) →
+   leave it on the **Free** plan.
+3. On the database's page, find the **REST API** section. Copy:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+
+### 2. Add them to the app
+
+Locally, add both to your `.env` file. On Render, add both under your
+service's **Environment** tab as environment variables, then trigger a
+redeploy (or it may redeploy automatically when you save).
+
+That's it — no code changes needed. The next time the app reads any table
+(students, orders, bundles, student_ids, sms_log, admin), it finds nothing
+in Redis yet, seeds it once from the matching `data/*.json` file bundled in
+your repo, and every read/write from then on goes to Upstash instead of
+disk. Restarts, redeploys, and Render's free-tier sleep/wake cycle no
+longer touch your real data at all.
+
+### Notes
+
+- Leave `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` unset and
+  the app behaves exactly as before — local `data/*.json` files, zero
+  setup. Good for local development; not for production on a free host.
+- Upstash's free tier has generous daily request limits that this app's
+  traffic (a handful of admins/students, not high-frequency polling) sits
+  well under. If you ever outgrow it, the same `lib/db.js` interface would
+  let you swap in a paid tier or a different backend without touching
+  `server.js`.
+- If you ever need to reset a table back to its seed data on Redis (e.g.
+  during testing), delete that key from the Upstash console's **Data
+  Browser** — the next read reseeds it from the local file.
+
 ## Getting paid with Paystack
 
 Students can now pay by **card, Mobile Money (MTN/Vodafone Cash/AirtelTigo

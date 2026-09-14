@@ -93,15 +93,15 @@ async function readFormBody(req) {
   return Object.fromEntries(new URLSearchParams(raw));
 }
 
-function currentStudent(req) {
+async function currentStudent(req) {
   const cookies = auth.parseCookies(req);
   const session = auth.getStudentSession(cookies.session);
   if (!session) return null;
-  const students = db.read("students");
+  const students = await db.read("students");
   return students.find((s) => s.studentId === session.studentId) || null;
 }
 
-function currentAdmin(req) {
+async function currentAdmin(req) {
   const cookies = auth.parseCookies(req);
   return auth.getAdminSession(cookies.adminSession);
 }
@@ -178,8 +178,8 @@ function serveStatic(req, res, pathname) {
 // ---------------------------------------------------------------------
 
 async function createOrder({ student, bundleCode, airtimeNetwork, airtimeAmount, channel }) {
-  const bundles = db.read("bundles");
-  const orders = db.read("orders");
+  const bundles = await db.read("bundles");
+  const orders = await db.read("orders");
 
   let description, price;
 
@@ -206,7 +206,7 @@ async function createOrder({ student, bundleCode, airtimeNetwork, airtimeAmount,
     createdAt: new Date().toISOString(),
   };
   orders.push(order);
-  db.write("orders", orders);
+  await db.write("orders", orders);
 
   // No Paystack key set up yet — fall back to the original "pay the
   // reseller manually, admin marks it done" flow so this still works
@@ -231,7 +231,7 @@ async function createOrder({ student, bundleCode, airtimeNetwork, airtimeAmount,
       metadata: { orderId: order.id, studentId: student.studentId },
     });
     order.paystackReference = reference;
-    db.write("orders", orders);
+    await db.write("orders", orders);
 
     if (channel === "sms") {
       await sms.sendSMS(
@@ -246,7 +246,7 @@ async function createOrder({ student, bundleCode, airtimeNetwork, airtimeAmount,
     // Don't leave the student stuck — fall back to manual processing
     // rather than losing the order.
     order.status = "pending";
-    db.write("orders", orders);
+    await db.write("orders", orders);
     await sms.sendSMS(
       student.phone,
       `Campus Data Hub: order received for ${description} (GHS ${price.toFixed(2)}). Online payment is temporarily unavailable — we'll follow up on how to pay.`
@@ -264,7 +264,7 @@ function paystackCallbackUrl() {
 // ---------------------------------------------------------------------
 
 async function handleHome(req, res) {
-  const student = currentStudent(req);
+  const student = await currentStudent(req);
   const html = layout({
     title: "Home",
     nav: { loggedIn: !!student, studentName: student?.name },
@@ -284,13 +284,13 @@ async function handleRegisterGet(req, res) {
 async function handleRegisterPost(req, res) {
   const body = await readFormBody(req);
   const { studentId, name, phone, password } = body;
-  const students = db.read("students");
+  const students = await db.read("students");
 
   if (!studentId || !name || !phone || !password) {
     return sendHtml(res, 400, layout({ title: "Register", body: pages.registerPage({ ...oauthFlags(), error: "All fields are required." }) }));
   }
 
-  const idRecord = studentIds.findAssignable(studentId);
+  const idRecord = await studentIds.findAssignable(studentId);
   if (!idRecord) {
     return sendHtml(
       res,
@@ -319,8 +319,8 @@ async function handleRegisterPost(req, res) {
     passwordHash: hash,
     createdAt: new Date().toISOString(),
   });
-  db.write("students", students);
-  studentIds.markClaimed(canonicalId, canonicalId);
+  await db.write("students", students);
+  await studentIds.markClaimed(canonicalId, canonicalId);
 
   const token = auth.createStudentSession(canonicalId);
   redirect(res, "/bundles", studentSessionCookie(token));
@@ -333,7 +333,7 @@ async function handleLoginGet(req, res) {
 async function handleLoginPost(req, res) {
   const body = await readFormBody(req);
   const { studentId, password } = body;
-  const students = db.read("students");
+  const students = await db.read("students");
   const student = students.find((s) => s.studentId.toLowerCase() === (studentId || "").toLowerCase());
 
   const hasPassword = student && student.passwordHash && student.passwordSalt;
@@ -357,8 +357,8 @@ async function handleLogout(req, res) {
 }
 
 async function handleBundlesGet(req, res) {
-  const student = currentStudent(req);
-  const bundles = db.read("bundles");
+  const student = await currentStudent(req);
+  const bundles = await db.read("bundles");
   const html = layout({
     title: "Bundles",
     nav: { loggedIn: !!student, studentName: student?.name },
@@ -368,7 +368,7 @@ async function handleBundlesGet(req, res) {
 }
 
 async function handleOrdersPost(req, res) {
-  const student = currentStudent(req);
+  const student = await currentStudent(req);
   if (!student) return redirect(res, "/login");
 
   const body = await readFormBody(req);
@@ -381,7 +381,7 @@ async function handleOrdersPost(req, res) {
   });
 
   if (result.error) {
-    const bundles = db.read("bundles");
+    const bundles = await db.read("bundles");
     return sendHtml(
       res,
       400,
@@ -411,7 +411,7 @@ async function handleOrdersPost(req, res) {
 // Keys & Webhooks → Webhook URL at https://yourdomain.com/api/paystack/webhook.
 
 async function markOrderPaidIfNeeded(reference, paystackData) {
-  const orders = db.read("orders");
+  const orders = await db.read("orders");
   const order = orders.find((o) => o.paystackReference === reference);
   if (!order) return null;
   if (order.status === "paid" || order.status === "completed") return order; // already handled, avoid double SMS
@@ -420,11 +420,11 @@ async function markOrderPaidIfNeeded(reference, paystackData) {
   if (paystackData.status === "success" && amountMatches) {
     order.status = "paid";
     order.paidAt = new Date().toISOString();
-    db.write("orders", orders);
+    await db.write("orders", orders);
     await sms.sendSMS(order.phone, `Campus Data Hub: payment received for ${order.description}. We'll process it shortly.`);
   } else if (paystackData.status !== "success") {
     order.status = "payment_failed";
-    db.write("orders", orders);
+    await db.write("orders", orders);
   }
   return order;
 }
@@ -440,8 +440,8 @@ async function handlePaymentsCallback(req, res, url) {
       data.status === "success"
         ? { type: "success", message: "Payment received — thanks! We'll process your order shortly." }
         : { type: "error", message: "That payment wasn't successful. You can try again from your orders page." };
-    const student = currentStudent(req);
-    const orders = student ? db.read("orders").filter((o) => o.studentId === student.studentId).reverse() : [];
+    const student = await currentStudent(req);
+    const orders = student ? (await db.read("orders")).filter((o) => o.studentId === student.studentId).reverse() : [];
     return sendHtml(
       res,
       200,
@@ -485,10 +485,10 @@ async function handlePaystackWebhook(req, res) {
 }
 
 async function handleOrdersGet(req, res) {
-  const student = currentStudent(req);
+  const student = await currentStudent(req);
   if (!student) return redirect(res, "/login");
 
-  const orders = db.read("orders").filter((o) => o.studentId === student.studentId).reverse();
+  const orders = (await db.read("orders")).filter((o) => o.studentId === student.studentId).reverse();
   const html = layout({
     title: "My orders",
     nav: { loggedIn: true, studentName: student.name },
@@ -498,11 +498,11 @@ async function handleOrdersGet(req, res) {
 }
 
 async function handleOrderPay(req, res, orderId) {
-  const student = currentStudent(req);
+  const student = await currentStudent(req);
   if (!student) return redirect(res, "/login");
   if (!paystack.isConfigured()) return redirect(res, "/orders");
 
-  const orders = db.read("orders");
+  const orders = await db.read("orders");
   const order = orders.find((o) => o.id === orderId && o.studentId === student.studentId);
   if (!order || !["awaiting_payment", "payment_failed", "pending"].includes(order.status)) {
     return redirect(res, "/orders");
@@ -519,11 +519,11 @@ async function handleOrderPay(req, res, orderId) {
     });
     order.paystackReference = reference;
     order.status = "awaiting_payment";
-    db.write("orders", orders);
+    await db.write("orders", orders);
     redirect(res, tx.authorization_url);
   } catch (err) {
     console.error("Paystack initialize failed:", err.message);
-    const allOrders = db.read("orders").filter((o) => o.studentId === student.studentId).reverse();
+    const allOrders = (await db.read("orders")).filter((o) => o.studentId === student.studentId).reverse();
     sendHtml(
       res,
       502,
@@ -538,13 +538,13 @@ async function handleOrderPay(req, res, orderId) {
 }
 
 async function handleGpaCheckerGet(req, res, url) {
-  const student = currentStudent(req);
+  const student = await currentStudent(req);
   const studentId = url.searchParams.get("studentId");
   let result = null;
   let error = null;
 
   if (studentId) {
-    const scores = db.read("exam_scores");
+    const scores = await db.read("exam_scores");
     const record = scores[studentId.toUpperCase()];
     if (record) {
       result = { ...record, gpa: computeGpa(record.courses) };
@@ -580,7 +580,7 @@ async function completeOAuthLogin(res, students, provider, field, profile) {
       // Link this provider to an existing account found by email match.
       student[field] = profile.providerId;
       student.email = student.email || profile.email;
-      db.write("students", students);
+      await db.write("students", students);
     }
     const token = auth.createStudentSession(student.studentId);
     return redirect(res, "/bundles", studentSessionCookie(token));
@@ -622,7 +622,7 @@ async function handleGoogleCallback(req, res, url) {
   try {
     const accessToken = await oauth.exchangeGoogleCode(code);
     const profile = await oauth.getGoogleProfile(accessToken);
-    const students = db.read("students");
+    const students = await db.read("students");
     await completeOAuthLogin(res, students, "Google", "googleId", profile);
   } catch (err) {
     console.error(err);
@@ -647,7 +647,7 @@ async function handleFacebookCallback(req, res, url) {
   try {
     const accessToken = await oauth.exchangeFacebookCode(code);
     const profile = await oauth.getFacebookProfile(accessToken);
-    const students = db.read("students");
+    const students = await db.read("students");
     await completeOAuthLogin(res, students, "Facebook", "facebookId", profile);
   } catch (err) {
     console.error(err);
@@ -662,14 +662,14 @@ async function handleRegisterCompletePost(req, res) {
 
   const body = await readFormBody(req);
   const { studentId, phone } = body;
-  const students = db.read("students");
+  const students = await db.read("students");
 
   if (!studentId || !phone) {
     res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
     return res.end(layout({ title: "Finish setting up", body: pages.completeOAuthPage({ name: pending.name, email: pending.email, provider: pending.provider, error: "Student ID and phone are both required." }) }));
   }
 
-  const idRecord = studentIds.findAssignable(studentId);
+  const idRecord = await studentIds.findAssignable(studentId);
   if (!idRecord) {
     res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
     return res.end(
@@ -700,8 +700,8 @@ async function handleRegisterCompletePost(req, res) {
     [field]: pending.providerId,
     createdAt: new Date().toISOString(),
   });
-  db.write("students", students);
-  studentIds.markClaimed(canonicalId, canonicalId);
+  await db.write("students", students);
+  await studentIds.markClaimed(canonicalId, canonicalId);
   auth.destroyPendingOAuthSession(cookies.pendingOAuth);
 
   const token = auth.createStudentSession(canonicalId);
@@ -716,7 +716,7 @@ async function handleAdminLoginGet(req, res) {
 
 async function handleAdminLoginPost(req, res) {
   const body = await readFormBody(req);
-  const adminConf = db.read("admin");
+  const adminConf = await db.read("admin");
   if (body.username === adminConf.username && body.password === adminConf.password) {
     const token = auth.createAdminSession();
     return redirect(res, "/admin/orders", adminSessionCookie(token));
@@ -725,16 +725,16 @@ async function handleAdminLoginPost(req, res) {
 }
 
 async function handleAdminOrdersGet(req, res) {
-  if (!currentAdmin(req)) return redirect(res, "/admin/login");
-  const orders = db.read("orders").reverse();
+  if (!await currentAdmin(req)) return redirect(res, "/admin/login");
+  const orders = (await db.read("orders")).reverse();
   sendHtml(res, 200, layout({ title: "Admin · Orders", body: pages.adminOrdersPage({ orders }) }));
 }
 
 // -------- admin: pre-issued Student IDs --------
 
 async function handleAdminStudentIdsGet(req, res, url) {
-  if (!currentAdmin(req)) return redirect(res, "/admin/login");
-  const list = studentIds.read();
+  if (!await currentAdmin(req)) return redirect(res, "/admin/login");
+  const list = await studentIds.read();
   const query = url.searchParams.get("q") || "";
   const html = layout({
     title: "Admin · Student IDs",
@@ -749,13 +749,13 @@ async function handleAdminStudentIdsGet(req, res, url) {
 }
 
 async function handleAdminStudentIdsIssuePost(req, res) {
-  if (!currentAdmin(req)) return redirect(res, "/admin/login");
+  if (!await currentAdmin(req)) return redirect(res, "/admin/login");
   const body = await readFormBody(req);
   const name = (body.name || "").trim();
   const phone = (body.phone || "").trim();
 
   if (!name) {
-    const list = studentIds.read();
+    const list = await studentIds.read();
     return sendHtml(
       res,
       400,
@@ -769,9 +769,9 @@ async function handleAdminStudentIdsIssuePost(req, res) {
 
   let issued;
   try {
-    issued = studentIds.issueNext({ name, phone });
+    issued = await studentIds.issueNext({ name, phone });
   } catch (err) {
-    const list = studentIds.read();
+    const list = await studentIds.read();
     return sendHtml(
       res,
       400,
@@ -787,7 +787,7 @@ async function handleAdminStudentIdsIssuePost(req, res) {
     await sms.sendSMS(phone, `Campus Data Hub: your Student ID is ${issued.code}. Keep it safe — you'll need it to register at our site.`);
   }
 
-  const list = studentIds.read();
+  const list = await studentIds.read();
   sendHtml(
     res,
     200,
@@ -805,8 +805,8 @@ async function handleAdminStudentIdsIssuePost(req, res) {
 }
 
 async function handleAdminCompleteOrder(req, res, orderId) {
-  if (!currentAdmin(req)) return redirect(res, "/admin/login");
-  const orders = db.read("orders");
+  if (!await currentAdmin(req)) return redirect(res, "/admin/login");
+  const orders = await db.read("orders");
   const order = orders.find((o) => o.id === orderId);
   // Once Paystack is wired in, only let admins fulfil orders that have
   // actually been paid for — "pending" only still occurs for orders placed
@@ -815,7 +815,7 @@ async function handleAdminCompleteOrder(req, res, orderId) {
   if (order && fulfillable && order.status !== "completed") {
     order.status = "completed";
     order.completedAt = new Date().toISOString();
-    db.write("orders", orders);
+    await db.write("orders", orders);
     await sms.sendSMS(order.phone, `Campus Data Hub: your ${order.description} has been delivered. Enjoy!`);
   }
   redirect(res, "/admin/orders");
@@ -830,7 +830,7 @@ async function handleSmsInbound(req, res) {
   const fromPhone = (body.from || "").trim();
   const text = body.text || "";
 
-  const students = db.read("students");
+  const students = await db.read("students");
   const student = students.find((s) => s.phone.replace(/\D/g, "").endsWith(fromPhone.replace(/\D/g, "").slice(-9)));
 
   if (!student) {
@@ -838,7 +838,7 @@ async function handleSmsInbound(req, res) {
     return sendJson(res, 200, { ok: true, matched: false });
   }
 
-  const bundles = db.read("bundles");
+  const bundles = await db.read("bundles");
   const code = sms.parseOrderCode(text, bundles);
 
   if (!code) {
