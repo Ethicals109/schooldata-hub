@@ -167,7 +167,16 @@ function serveStatic(req, res, pathname) {
       return res.end("Not found");
     }
     const ext = path.extname(filePath);
-    const type = { ".css": "text/css", ".js": "application/javascript" }[ext] || "text/plain";
+    const type =
+      {
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".svg": "image/svg+xml",
+        ".ico": "image/x-icon",
+      }[ext] || "text/plain";
     res.writeHead(200, { "Content-Type": type });
     res.end(content);
   });
@@ -359,10 +368,20 @@ async function handleLogout(req, res) {
 async function handleBundlesGet(req, res) {
   const student = await currentStudent(req);
   const bundles = await db.read("bundles");
+
+  let orderSummary = null;
+  if (student) {
+    const myOrders = (await db.read("orders")).filter((o) => o.studentId === student.studentId);
+    orderSummary = {
+      total: myOrders.length,
+      pending: myOrders.filter((o) => ["awaiting_payment", "pending", "paid"].includes(o.status)).length,
+    };
+  }
+
   const html = layout({
     title: "Bundles",
     nav: { loggedIn: !!student, studentName: student?.name },
-    body: pages.bundlesPage({ grouped: groupBundles(bundles), loggedIn: !!student }),
+    body: pages.bundlesPage({ grouped: groupBundles(bundles), loggedIn: !!student, orderSummary }),
   });
   sendHtml(res, 200, html);
 }
@@ -907,6 +926,9 @@ const server = http.createServer(async (req, res) => {
     const method = req.method;
 
     if (method === "GET" && (pathname === "/style.css" || pathname === "/app.js")) {
+      return serveStatic(req, res, pathname);
+    }
+    if (method === "GET" && [".png", ".jpg", ".jpeg", ".svg", ".ico"].includes(path.extname(pathname))) {
       return serveStatic(req, res, pathname);
     }
 

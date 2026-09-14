@@ -50,8 +50,12 @@ a { color: var(--night-2); }
   font-size: 1.15rem;
   color: var(--paper);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .brand span { color: var(--gold); }
+.brand-mark { width: 30px; height: 30px; border-radius: 50%; display: block; }
 
 .site-nav {
   display: flex;
@@ -290,7 +294,9 @@ a { color: var(--night-2); }
   color: #fff;
   text-decoration: none;
   font-size: 1.05rem;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1.6rem;
   padding: 0 0.4rem;
 }
@@ -380,6 +386,34 @@ a { color: var(--night-2); }
 .qa-gigforless { background: linear-gradient(135deg, #7B4FA6, #5c3a7d); }
 .qa-paystack { background: linear-gradient(135deg, #0EA57D, #0b7d5f); }
 .qa-settings { background: linear-gradient(135deg, #4A5568, #333c48); }
+
+/* Network / product brand cards — used on the homepage and bundles page */
+.net-mtn { background: linear-gradient(135deg, #F2C14E, #C9821F); }
+.net-atis { background: linear-gradient(135deg, #3E7FC1, #1B4A78); }
+.net-atbt { background: linear-gradient(135deg, #1B5FA8, #0f3a63); }
+.net-tel { background: linear-gradient(135deg, #D1483E, #8f221b); }
+.net-airtime { background: linear-gradient(135deg, #7B4FA6, #4d3167); }
+.net-gpa { background: linear-gradient(135deg, #2F7A6B, #1c5348); }
+
+.airtime-spotlight-grid { grid-template-columns: 1fr; max-width: 380px; }
+.airtime-spotlight { min-height: 0; gap: 0.6rem; }
+.airtime-spotlight .qa-title { margin-top: 0.5rem; font-size: 1.05rem; }
+.airtime-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+.airtime-form select,
+.airtime-form input[type="number"] {
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.airtime-form input[type="number"] { width: 100px; }
+.airtime-spotlight .ticket-code { color: rgba(255, 255, 255, 0.7); margin-top: 0.3rem; }
 
 @media (max-width: 720px) {
   .admin-shell { flex-direction: column; }

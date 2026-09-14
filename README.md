@@ -219,6 +219,56 @@ longer touch your real data at all.
   during testing), delete that key from the Upstash console's **Data
   Browser** — the next read reseeds it from the local file.
 
+## Sending real SMS
+
+By default, "sending" an SMS just logs it to `data/sms_log.json` and the
+console — good for development, but students never actually receive
+anything. `lib/sms.js` supports two real gateways that work in Ghana:
+**Africa's Talking** and **Hubtel**. Pick whichever you already have an
+account with, or whichever is easier to sign up for.
+
+### Option A — Africa's Talking
+
+1. Sign up at [africastalking.com](https://africastalking.com).
+2. Go to your dashboard → **Settings → API Key** to generate a key, and
+   note your **username** (shown in the dashboard header).
+3. Set in `.env`:
+   ```
+   SMS_PROVIDER=africastalking
+   SMS_USERNAME=your_at_username
+   SMS_API_KEY=your_at_api_key
+   SMS_SENDER_ID=your_approved_sender_id
+   ```
+
+### Option B — Hubtel
+
+1. Sign up for a Hubtel Merchant Account at [hubtel.com](https://hubtel.com).
+2. In the Hubtel dashboard: **Messaging → Manage → Programmable SMS** to
+   get your **Client ID** and **Client Secret**.
+3. Set in `.env`:
+   ```
+   SMS_PROVIDER=hubtel
+   SMS_USERNAME=your_hubtel_client_id
+   SMS_API_KEY=your_hubtel_client_secret
+   SMS_SENDER_ID=your_approved_sender_id
+   ```
+
+### Before either will actually deliver anything: get your Sender ID approved
+
+Both gateways require your alphanumeric Sender ID (the name students see
+instead of a phone number, e.g. "CampusHub") to be **registered and
+approved** before Ghanaian carriers will deliver it — this is a
+carrier-level anti-spam rule, not something either platform can skip.
+Look for "Sender ID" or "Sender Name" registration in your provider's
+dashboard, submit it, and expect it to take anywhere from a few hours to
+a couple of days for approval. Messages sent with an unregistered sender
+ID are typically rejected or silently dropped — if your first live test
+doesn't arrive, this is almost always why.
+
+On Render, add the same variables under your service's **Environment**
+tab. Leave `SMS_PROVIDER` unset anywhere and the app quietly stays in
+mock mode — nothing breaks, messages just don't go anywhere real.
+
 ## Getting paid with Paystack
 
 Students can now pay by **card, Mobile Money (MTN/Vodafone Cash/AirtelTigo
