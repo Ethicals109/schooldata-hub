@@ -1,0 +1,13 @@
+{
+  "name": "campus-data-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Student-run data & airtime reselling site — bundles, SMS ordering, Paystack payments, invite-only registration.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
